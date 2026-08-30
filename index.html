@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Air India Award Explorer</title>
+<style>
+  /* ─── Design tokens ─── */
+  :root {
+    --bg:       #0a0c10;
+    --surface:  #111418;
+    --panel:    #16191f;
+    --border:   #252a33;
+    --border2:  #2e3540;
+    --txt:      #e8eaf0;
+    --txt2:     #8890a0;
+    --txt3:     #5a6272;
+    --accent:   #e8522a;        /* Air India terracotta-red */
+    --accent2:  #f0793f;
+    --gold:     #d4a843;
+    --teal:     #2fb8ac;
+    --blue:     #3b82f6;
+    --green:    #22c55e;
+    --radius:   10px;
+    --radius2:  16px;
+    --shadow:   0 4px 24px rgba(0,0,0,.5);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--txt);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ─── Ambient glow ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 40% at 15% 0%, rgba(232,82,42,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 85% 100%, rgba(59,130,246,.07) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ─── Layout ─── */
+  .app { max-width: 1440px; margin: 0 auto; padding: 0 20px 40px; position: relative; z-index: 1; }
+
+  /* ─── Header ─── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 18px; gap: 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; color: var(--txt); }
+  .logo p  { font-size: 12px; color: var(--txt2); margin-top: 1px; }
+  header a {
+    font-size: 12px; color: var(--txt3);
+    text-decoration: none; transition: color .2s;
+  }
+  header a:hover { color: var(--accent); }
+
+  /* ─── Stat cards ─── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin: 18px 0;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-val { font-size: 22px; font-weight: 800; color: var(--txt); line-height: 1; }
+  .stat-lbl { font-size: 11px; color: var(--txt2); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ─── Tabs ─── */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    width: fit-content;
+    margin: 18px 0 14px;
+  }
+  .tab {
+    padding: 7px 18px;
+    border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--txt2);
+    transition: all .18s;
+    white-space: nowrap;
+  }
+  .tab.active { background: var(--accent); color: #fff; }
+  .tab:hover:not(.active) { background: var(--panel); color: var(--txt); }
+
+  /* ─── Toolbar / filters ─── */
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr repeat(4, auto);
+    gap: 8px; align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  @media(max-width:900px) {
+    .toolbar { grid-template-columns: 1fr 1fr; }
+    .toolbar .search-wrap { grid-column: 1/-1; }
+  }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--txt3); pointer-events: none; }
+  input[type=text], select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--txt);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    width: 100%;
+    transition: border-color .18s;
+  }
+  input[type=text] { padding-left: 36px; }
+  input[type=text]:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+  .clear-btn {
+    padding: 9px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--txt2);
+    font-size: 12px; cursor: pointer;
+    white-space: nowrap;
+    transition: all .18s;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--txt); }
+
+  /* ─── India Finder Panel ─── */
+  .finder-panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius2);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .finder-panel h3 {
+    font-size: 13px; font-weight: 700; color: var(--accent2);
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .finder-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px; align-items: end;
+  }
+  @media(max-width:600px) { .finder-row { grid-template-columns: 1fr; } }
+  .finder-row label { font-size: 11px; color: var(--txt2); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+  .finder-btn {
+    padding: 9px 20px;
+    background: var(--accent);
+    border: none; border-radius: var(--radius);
+    color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    transition: background .18s;
+  }
+  .finder-btn:hover { background: var(--accent2); }
+  .finder-results { margin-top: 14px; }
+  .finder-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px; margin-top: 10px;
+  }
+  .finder-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color .18s, transform .15s;
+  }
+  .finder-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .finder-card-route { font-size: 13px; font-weight: 700; color: var(--txt); }
+  .finder-card-meta { font-size: 11px; color: var(--txt2); margin-top: 3px; }
+  .finder-card-pts { font-size: 15px; font-weight: 800; color: var(--accent2); margin-top: 6px; }
+  .finder-msg { font-size: 12px; color: var(--txt2); font-style: italic; }
+
+  /* ─── Cards view ─── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .route-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    padding: 16px;
+    transition: border-color .2s, transform .15s;
+    cursor: default;
+  }
+  .route-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .route-card.intl { border-left: 3px solid var(--accent); }
+  .route-card.dom  { border-left: 3px solid var(--teal); }
+  .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .card-route { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
+  .card-cities { font-size: 11px; color: var(--txt2); margin-top: 2px; }
+  .badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    padding: 3px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0;
+  }
+  .badge-intl { background: rgba(232,82,42,.15); color: var(--accent2); }
+  .badge-dom  { background: rgba(47,184,172,.12); color: var(--teal); }
+  .card-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-top: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .card-row:first-child { border-top: none; }
+  .card-lbl { color: var(--txt2); }
+  .card-val { font-weight: 600; color: var(--txt); }
+  .pts-eco  { color: var(--green); }
+  .pts-prem { color: var(--teal); }
+  .pts-biz  { color: var(--gold); }
+  .pts-first{ color: var(--accent2); }
+
+  /* ─── Table view ─── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius2);
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+    min-width: 900px;
+  }
+  thead { position: sticky; top: 0; z-index: 10; }
+  th {
+    background: var(--panel);
+    padding: 11px 14px;
+    text-align: left;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--txt2);
+    border-bottom: 1px solid var(--border2);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color .15s;
+  }
+  th:hover { color: var(--txt); }
+  th .th-inner { display: flex; align-items: center; gap: 4px; }
+  th .sort-icon { opacity: .4; font-size: 10px; }
+  th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; color: var(--accent); }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--txt);
+    vertical-align: middle;
+  }
+  tr:hover td { background: var(--panel); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Per-column filters inside table header */
+  .col-filter-row th {
+    padding: 6px 8px;
+    background: var(--surface);
+    cursor: default;
+  }
+  .col-filter-row th:hover { color: var(--txt2); }
+  .col-filter {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--txt);
+    font-size: 11px;
+    padding: 5px 8px;
+    outline: none;
+  }
+  .col-filter:focus { border-color: var(--accent); }
+
+  /* Scope pills in table */
+  .pill {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  }
+  .pill-intl { background: rgba(232,82,42,.13); color: var(--accent2); }
+  .pill-dom  { background: rgba(47,184,172,.12); color: var(--teal); }
+
+  /* Points cells */
+  .pts { font-weight: 700; }
+  .pts-na { color: var(--txt3); font-weight: 400; }
+
+  /* ─── Empty state ─── */
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--txt2);
+  }
+  .empty svg { opacity: .25; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  /* ─── Result count bar ─── */
+  .results-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--txt2);
+    margin-bottom: 10px;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .results-bar strong { color: var(--txt); }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ─── Responsive ─── */
+  @media(max-width: 640px) {
+    .cards-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✈</div>
+      <div>
+        <h1>Air India Award Explorer</h1>
+        <p>Miles redemption guide &mdash; 588 routes, 107 airports</p>
+      </div>
+    </div>
+    <a href="https://x.com/kunal_shinde" target="_blank" rel="noopener">@kunal_shinde</a>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- ★ India → Destination Finder -->
+  <div class="finder-panel">
+    <h3>
+      <span>🇮🇳</span> India → Destination Finder
+    </h3>
+    <div class="finder-row">
+      <div>
+        <label>Flying from (Indian city)</label>
+        <select id="finderFrom">
+          <option value="">Any Indian airport</option>
+        </select>
+      </div>
+      <div>
+        <label>Destination country</label>
+        <select id="finderCountry">
+          <option value="">Any country</option>
+        </select>
+      </div>
+      <div>
+        <button class="finder-btn" onclick="runFinder()">Find Routes</button>
+      </div>
+    </div>
+    <div class="finder-results" id="finderResults"></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search" placeholder="Search city, code, country…">
+    </div>
+    <select id="scope">
+      <option value="">All routes</option>
+      <option value="domestic">Domestic</option>
+      <option value="international">International</option>
+    </select>
+    <select id="sortSel">
+      <option value="">Default order</option>
+      <option value="eco_asc">Economy ↑</option>
+      <option value="eco_desc">Economy ↓</option>
+      <option value="biz_asc">Business ↑</option>
+      <option value="dist_desc">Distance ↓</option>
+      <option value="dist_asc">Distance ↑</option>
+    </select>
+    <button class="clear-btn" onclick="clearAll()">Clear filters</button>
+  </div>
+
+  <!-- View tabs -->
+  <div class="tabs">
+    <button class="tab active" data-view="cards">Cards</button>
+    <button class="tab" data-view="table">Table</button>
+  </div>
+
+  <div class="results-bar">
+    <span id="resultsLabel"></span>
+  </div>
+
+  <!-- Views -->
+  <div id="cardsView"></div>
+  <div id="tableView" style="display:none"></div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ DATA ══ -->
+<script>
+window.ROUTES=[{"from":"AAN","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2596},{"from":"CCJ","to":"AAN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2596},{"from":"AMD","to":"BLR","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1223},{"from":"BLR","to":"AMD","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1223},{"from":"AMD","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":445},{"from":"BOM","to":"AMD","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":445},{"from":"AMD","to":"DEL","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":754},{"from":"DEL","to":"AMD","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":754},{"from":"AMD","to":"LGW","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6848},{"from":"LGW","to":"AMD","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6848},{"from":"AMS","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6364},{"from":"DEL","to":"AMS","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6364},{"from":"ATQ","to":"BHX","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6393},{"from":"BHX","to":"ATQ","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6393},{"from":"ATQ","to":"BOM","scope":"domestic","economy_min":5500,"premium_min":12000.0,"business_min":21000.0,"first_min":35000.0,"distance_km":1416},{"from":"BOM","to":"ATQ","scope":"domestic","economy_min":5500,"premium_min":12000.0,"business_min":21000.0,"first_min":35000.0,"distance_km":1416},{"from":"ATQ","to":"DEL","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":414},{"from":"DEL","to":"ATQ","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":414},{"from":"ATQ","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2028},{"from":"DXB","to":"ATQ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2028},{"from":"ATQ","to":"LGW","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6315},{"from":"LGW","to":"ATQ","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6315},{"from":"ATQ","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2009},{"from":"SHJ","to":"ATQ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2009},{"from":"AUH","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2724},{"from":"BLR","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2724},{"from":"AUH","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":1971},{"from":"BOM","to":"AUH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":1971},{"from":"AUH","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2691},{"from":"CCJ","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2691},{"from":"AUH","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2604},{"from":"CNN","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2604},{"from":"AUH","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2795},{"from":"COK","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2795},{"from":"AUH","to":"DEL","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2276},{"from":"DEL","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2276},{"from":"AUH","to":"HYD","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2594},{"from":"HYD","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2594},{"from":"AUH","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2480},{"from":"IXE","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2480},{"from":"AUH","to":"PNQ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2095},{"from":"PNQ","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2095},{"from":"AUH","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2956},{"from":"TRV","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2956},{"from":"AUH","to":"TRZ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2962},{"from":"TRZ","to":"AUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2962},{"from":"AYJ","to":"DEL","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":538},{"from":"DEL","to":"AYJ","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":538},{"from":"BAH","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3143},{"from":"CCJ","to":"BAH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3143},{"from":"BAH","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3056},{"from":"CNN","to":"BAH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3056},{"from":"BAH","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3246},{"from":"COK","to":"BAH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3246},{"from":"BAH","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2932},{"from":"IXE","to":"BAH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2932},{"from":"BBI","to":"BLR","scope":"domestic","economy_min":5500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1166},{"from":"BLR","to":"BBI","scope":"domestic","economy_min":5500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1166},{"from":"BBI","to":"BOM","scope":"domestic","economy_min":8000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1362},{"from":"BOM","to":"BBI","scope":"domestic","economy_min":8000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1362},{"from":"BBI","to":"DEL","scope":"domestic","economy_min":6500,"premium_min":13000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1277},{"from":"DEL","to":"BBI","scope":"domestic","economy_min":6500,"premium_min":13000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1277},{"from":"BBI","to":"PNQ","scope":"domestic","economy_min":8500,"premium_min":"","business_min":"","first_min":"","distance_km":1261},{"from":"PNQ","to":"BBI","scope":"domestic","economy_min":8500,"premium_min":"","business_min":"","first_min":"","distance_km":1261},{"from":"BDQ","to":"BOM","scope":"domestic","economy_min":3500,"premium_min":8000.0,"business_min":11000.0,"first_min":15000.0,"distance_km":363},{"from":"BOM","to":"BDQ","scope":"domestic","economy_min":3500,"premium_min":8000.0,"business_min":11000.0,"first_min":15000.0,"distance_km":363},{"from":"BDQ","to":"DEL","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":792},{"from":"DEL","to":"BDQ","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":792},{"from":"BHJ","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":11000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":571},{"from":"BOM","to":"BHJ","scope":"domestic","economy_min":5000,"premium_min":11000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":571},{"from":"BHJ","to":"DEL","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":946},{"from":"DEL","to":"BHJ","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":946},{"from":"BHO","to":"BOM","scope":"domestic","economy_min":4500,"premium_min":11000.0,"business_min":16000.0,"first_min":20000.0,"distance_km":658},{"from":"BOM","to":"BHO","scope":"domestic","economy_min":4500,"premium_min":11000.0,"business_min":16000.0,"first_min":20000.0,"distance_km":658},{"from":"BHO","to":"DEL","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":587},{"from":"DEL","to":"BHO","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":587},{"from":"BHX","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6798},{"from":"DEL","to":"BHX","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6798},{"from":"BKK","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2492},{"from":"BLR","to":"BKK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2492},{"from":"BKK","to":"BOM","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3031},{"from":"BOM","to":"BKK","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3031},{"from":"BKK","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2949},{"from":"DEL","to":"BKK","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2949},{"from":"BKK","to":"PNQ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2914},{"from":"PNQ","to":"BKK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2914},{"from":"BKK","to":"STV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3079},{"from":"STV","to":"BKK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3079},{"from":"BKK","to":"VNS","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2281},{"from":"VNS","to":"BKK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2281},{"from":"BLR","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":19000.0,"first_min":25000.0,"distance_km":835},{"from":"BOM","to":"BLR","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":19000.0,"first_min":25000.0,"distance_km":835},{"from":"BLR","to":"CCJ","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":298},{"from":"CCJ","to":"BLR","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":298},{"from":"BLR","to":"CCU","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1546},{"from":"CCU","to":"BLR","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1546},{"from":"BLR","to":"CNN","scope":"domestic","economy_min":3500,"premium_min":"","business_min":"","first_min":"","distance_km":274},{"from":"CNN","to":"BLR","scope":"domestic","economy_min":3500,"premium_min":"","business_min":"","first_min":"","distance_km":274},{"from":"BLR","to":"COK","scope":"domestic","economy_min":4000,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":367},{"from":"COK","to":"BLR","scope":"domestic","economy_min":4000,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":367},{"from":"BLR","to":"DED","scope":"domestic","economy_min":8000,"premium_min":16000.0,"business_min":26000.0,"first_min":35000.0,"distance_km":1904},{"from":"DED","to":"BLR","scope":"domestic","economy_min":8000,"premium_min":16000.0,"business_min":26000.0,"first_min":35000.0,"distance_km":1904},{"from":"BLR","to":"DEL","scope":"domestic","economy_min":7000,"premium_min":14000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1709},{"from":"DEL","to":"BLR","scope":"domestic","economy_min":7000,"premium_min":14000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1709},{"from":"BLR","to":"DMM","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3260},{"from":"DMM","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3260},{"from":"BLR","to":"DOH","scope":"international","economy_min":12000,"premium_min":31000.0,"business_min":49000.0,"first_min":61000.0,"distance_km":3047},{"from":"DOH","to":"BLR","scope":"international","economy_min":12000,"premium_min":31000.0,"business_min":49000.0,"first_min":61000.0,"distance_km":3047},{"from":"BLR","to":"DXB","scope":"international","economy_min":12000,"premium_min":29000.0,"business_min":46000.0,"first_min":57000.0,"distance_km":2696},{"from":"DXB","to":"BLR","scope":"international","economy_min":12000,"premium_min":29000.0,"business_min":46000.0,"first_min":57000.0,"distance_km":2696},{"from":"BLR","to":"GAU","scope":"domestic","economy_min":10000,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":2040},{"from":"GAU","to":"BLR","scope":"domestic","economy_min":10000,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":2040},{"from":"BLR","to":"GOI","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":483},{"from":"GOI","to":"BLR","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":483},{"from":"BLR","to":"GOX","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":501},{"from":"GOX","to":"BLR","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":501},{"from":"BLR","to":"GWL","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1458},{"from":"GWL","to":"BLR","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1458},{"from":"BLR","to":"HYD","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":13000.0,"first_min":20000.0,"distance_km":455},{"from":"HYD","to":"BLR","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":13000.0,"first_min":20000.0,"distance_km":455},{"from":"BLR","to":"IDR","scope":"domestic","economy_min":7000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1079},{"from":"IDR","to":"BLR","scope":"domestic","economy_min":7000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1079},{"from":"BLR","to":"IXB","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1864},{"from":"IXB","to":"BLR","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1864},{"from":"BLR","to":"IXC","scope":"domestic","economy_min":6000,"premium_min":18000.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1946},{"from":"IXC","to":"BLR","scope":"domestic","economy_min":6000,"premium_min":18000.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1946},{"from":"BLR","to":"IXE","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":307},{"from":"IXE","to":"BLR","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":307},{"from":"BLR","to":"IXR","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1382},{"from":"IXR","to":"BLR","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1382},{"from":"BLR","to":"IXZ","scope":"domestic","economy_min":7500,"premium_min":15500.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1640},{"from":"IXZ","to":"BLR","scope":"domestic","economy_min":7500,"premium_min":15500.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1640},{"from":"BLR","to":"JAI","scope":"domestic","economy_min":7000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1529},{"from":"JAI","to":"BLR","scope":"domestic","economy_min":7000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1529},{"from":"BLR","to":"JDH","scope":"domestic","economy_min":7500,"premium_min":"","business_min":"","first_min":"","distance_km":1532},{"from":"JDH","to":"BLR","scope":"domestic","economy_min":7500,"premium_min":"","business_min":"","first_min":"","distance_km":1532},{"from":"BLR","to":"JED","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4185},{"from":"JED","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4185},{"from":"BLR","to":"KTM","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":1797},{"from":"KTM","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":1797},{"from":"BLR","to":"KWI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3545},{"from":"KWI","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3545},{"from":"BLR","to":"LHR","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":8047},{"from":"LHR","to":"BLR","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":8047},{"from":"BLR","to":"LKO","scope":"domestic","economy_min":6500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1544},{"from":"LKO","to":"BLR","scope":"domestic","economy_min":6500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1544},{"from":"BLR","to":"MAA","scope":"domestic","economy_min":1500,"premium_min":8000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":269},{"from":"MAA","to":"BLR","scope":"domestic","economy_min":1500,"premium_min":8000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":269},{"from":"BLR","to":"NAG","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":889},{"from":"NAG","to":"BLR","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":889},{"from":"BLR","to":"NMI","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":813},{"from":"NMI","to":"BLR","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":813},{"from":"BLR","to":"PAT","scope":"domestic","economy_min":8500,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1580},{"from":"PAT","to":"BLR","scope":"domestic","economy_min":8500,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1580},{"from":"BLR","to":"PNQ","scope":"domestic","economy_min":5500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":723},{"from":"PNQ","to":"BLR","scope":"domestic","economy_min":5500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":723},{"from":"BLR","to":"RUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3500},{"from":"RUH","to":"BLR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3500},{"from":"BLR","to":"STV","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1026},{"from":"STV","to":"BLR","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1026},{"from":"BLR","to":"SXR","scope":"domestic","economy_min":10500,"premium_min":18000.0,"business_min":30000.0,"first_min":35000.0,"distance_km":2333},{"from":"SXR","to":"BLR","scope":"domestic","economy_min":10500,"premium_min":18000.0,"business_min":30000.0,"first_min":35000.0,"distance_km":2333},{"from":"BLR","to":"TRV","scope":"domestic","economy_min":4000,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":531},{"from":"TRV","to":"BLR","scope":"domestic","economy_min":4000,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":531},{"from":"BLR","to":"TRZ","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":292},{"from":"TRZ","to":"BLR","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":292},{"from":"BLR","to":"UDR","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1331},{"from":"UDR","to":"BLR","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1331},{"from":"BLR","to":"VGA","scope":"domestic","economy_min":4000,"premium_min":"","business_min":"","first_min":"","distance_km":497},{"from":"VGA","to":"BLR","scope":"domestic","economy_min":4000,"premium_min":"","business_min":"","first_min":"","distance_km":497},{"from":"BLR","to":"VNS","scope":"domestic","economy_min":7500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1466},{"from":"VNS","to":"BLR","scope":"domestic","economy_min":7500,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1466},{"from":"BLR","to":"VTZ","scope":"domestic","economy_min":4500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":777},{"from":"VTZ","to":"BLR","scope":"domestic","economy_min":4500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":777},{"from":"BOM","to":"CCU","scope":"domestic","economy_min":5000,"premium_min":15000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1665},{"from":"CCU","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":15000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1665},{"from":"BOM","to":"CJB","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":19000.0,"first_min":25000.0,"distance_km":1002},{"from":"CJB","to":"BOM","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":19000.0,"first_min":25000.0,"distance_km":1002},{"from":"BOM","to":"CMB","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":1526},{"from":"CMB","to":"BOM","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":1526},{"from":"BOM","to":"COK","scope":"domestic","economy_min":5500,"premium_min":16000.0,"business_min":23000.0,"first_min":35000.0,"distance_km":1064},{"from":"COK","to":"BOM","scope":"domestic","economy_min":5500,"premium_min":16000.0,"business_min":23000.0,"first_min":35000.0,"distance_km":1064},{"from":"BOM","to":"DAC","scope":"international","economy_min":10000,"premium_min":"","business_min":"","first_min":"","distance_km":1889},{"from":"DAC","to":"BOM","scope":"international","economy_min":10000,"premium_min":"","business_min":"","first_min":"","distance_km":1889},{"from":"BOM","to":"DED","scope":"domestic","economy_min":6000,"premium_min":15000.0,"business_min":27000.0,"first_min":35000.0,"distance_km":1353},{"from":"DED","to":"BOM","scope":"domestic","economy_min":6000,"premium_min":15000.0,"business_min":27000.0,"first_min":35000.0,"distance_km":1353},{"from":"BOM","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":15000.0,"business_min":20000.0,"first_min":35000.0,"distance_km":1136},{"from":"DEL","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":15000.0,"business_min":20000.0,"first_min":35000.0,"distance_km":1136},{"from":"BOM","to":"DMM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2498},{"from":"DMM","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2498},{"from":"BOM","to":"DOH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2296},{"from":"DOH","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2296},{"from":"BOM","to":"DXB","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":1927},{"from":"DXB","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":1927},{"from":"BOM","to":"EWR","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12546},{"from":"EWR","to":"BOM","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12546},{"from":"BOM","to":"FRA","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6572},{"from":"FRA","to":"BOM","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6572},{"from":"BOM","to":"GOI","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":15000.0,"first_min":20000.0,"distance_km":425},{"from":"GOI","to":"BOM","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":15000.0,"first_min":20000.0,"distance_km":425},{"from":"BOM","to":"GOX","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":388},{"from":"GOX","to":"BOM","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":388},{"from":"BOM","to":"HND","scope":"international","economy_min":30000,"premium_min":"","business_min":"","first_min":"","distance_km":6733},{"from":"HND","to":"BOM","scope":"international","economy_min":30000,"premium_min":"","business_min":"","first_min":"","distance_km":6733},{"from":"BOM","to":"HSR","scope":"domestic","economy_min":3000,"premium_min":9000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":413},{"from":"HSR","to":"BOM","scope":"domestic","economy_min":3000,"premium_min":9000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":413},{"from":"BOM","to":"HYD","scope":"domestic","economy_min":3500,"premium_min":8000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":624},{"from":"HYD","to":"BOM","scope":"domestic","economy_min":3500,"premium_min":8000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":624},{"from":"BOM","to":"IDR","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":507},{"from":"IDR","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":507},{"from":"BOM","to":"IXB","scope":"domestic","economy_min":7500,"premium_min":"","business_min":"","first_min":"","distance_km":1793},{"from":"IXB","to":"BOM","scope":"domestic","economy_min":7500,"premium_min":"","business_min":"","first_min":"","distance_km":1793},{"from":"BOM","to":"IXC","scope":"domestic","economy_min":5500,"premium_min":12000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":1347},{"from":"IXC","to":"BOM","scope":"domestic","economy_min":5500,"premium_min":12000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":1347},{"from":"BOM","to":"IXE","scope":"domestic","economy_min":6500,"premium_min":11000.0,"business_min":14000.0,"first_min":17000.0,"distance_km":715},{"from":"IXE","to":"BOM","scope":"domestic","economy_min":6500,"premium_min":11000.0,"business_min":14000.0,"first_min":17000.0,"distance_km":715},{"from":"BOM","to":"IXR","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1374},{"from":"IXR","to":"BOM","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1374},{"from":"BOM","to":"JAI","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":912},{"from":"JAI","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":912},{"from":"BOM","to":"JDH","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":798},{"from":"JDH","to":"BOM","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":798},{"from":"BOM","to":"JED","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3518},{"from":"JED","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3518},{"from":"BOM","to":"JFK","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12532},{"from":"JFK","to":"BOM","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12532},{"from":"BOM","to":"JGA","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":18000.0,"first_min":25000.0,"distance_km":479},{"from":"JGA","to":"BOM","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":18000.0,"first_min":25000.0,"distance_km":479},{"from":"BOM","to":"LHR","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":7212},{"from":"LHR","to":"BOM","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":7212},{"from":"BOM","to":"LKO","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":1183},{"from":"LKO","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":1183},{"from":"BOM","to":"MAA","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1035},{"from":"MAA","to":"BOM","scope":"domestic","economy_min":4500,"premium_min":13000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1035},{"from":"BOM","to":"MCT","scope":"international","economy_min":12000,"premium_min":17000.0,"business_min":31000.0,"first_min":38000.0,"distance_km":1589},{"from":"MCT","to":"BOM","scope":"international","economy_min":12000,"premium_min":17000.0,"business_min":31000.0,"first_min":38000.0,"distance_km":1589},{"from":"BOM","to":"MRU","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4696},{"from":"MRU","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4696},{"from":"BOM","to":"NAG","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":683},{"from":"NAG","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":683},{"from":"BOM","to":"PAT","scope":"domestic","economy_min":7000,"premium_min":15000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":1450},{"from":"PAT","to":"BOM","scope":"domestic","economy_min":7000,"premium_min":15000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":1450},{"from":"BOM","to":"RUH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2770},{"from":"RUH","to":"BOM","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2770},{"from":"BOM","to":"SHJ","scope":"international","economy_min":12000,"premium_min":20000.0,"business_min":31000.0,"first_min":39000.0,"distance_km":1914},{"from":"SHJ","to":"BOM","scope":"international","economy_min":12000,"premium_min":20000.0,"business_min":31000.0,"first_min":39000.0,"distance_km":1914},{"from":"BOM","to":"SIN","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3921},{"from":"SIN","to":"BOM","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3921},{"from":"BOM","to":"SXR","scope":"domestic","economy_min":7500,"premium_min":20000.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1669},{"from":"SXR","to":"BOM","scope":"domestic","economy_min":7500,"premium_min":20000.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1669},{"from":"BOM","to":"TRV","scope":"domestic","economy_min":6500,"premium_min":14000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1258},{"from":"TRV","to":"BOM","scope":"domestic","economy_min":6500,"premium_min":14000.0,"business_min":19000.0,"first_min":30000.0,"distance_km":1258},{"from":"BOM","to":"UDR","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":624},{"from":"UDR","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":624},{"from":"BOM","to":"VGA","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":886},{"from":"VGA","to":"BOM","scope":"domestic","economy_min":4000,"premium_min":10000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":886},{"from":"BOM","to":"VNS","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":23000.0,"first_min":30000.0,"distance_km":1248},{"from":"VNS","to":"BOM","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":23000.0,"first_min":30000.0,"distance_km":1248},{"from":"CCJ","to":"DMM","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3227},{"from":"DMM","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3227},{"from":"CCJ","to":"DOH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3009},{"from":"DOH","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3009},{"from":"CCJ","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2676},{"from":"DXB","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2676},{"from":"CCJ","to":"JED","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4084},{"from":"JED","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4084},{"from":"CCJ","to":"KWI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3530},{"from":"KWI","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3530},{"from":"CCJ","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2327},{"from":"MCT","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2327},{"from":"CCJ","to":"RKT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2649},{"from":"RKT","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2649},{"from":"CCJ","to":"RUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3442},{"from":"RUH","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3442},{"from":"CCJ","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2668},{"from":"SHJ","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2668},{"from":"CCJ","to":"SLL","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2446},{"from":"SLL","to":"CCJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2446},{"from":"CCU","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":22000.0,"first_min":35000.0,"distance_km":1314},{"from":"DEL","to":"CCU","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":22000.0,"first_min":35000.0,"distance_km":1314},{"from":"CCU","to":"GAU","scope":"domestic","economy_min":5000,"premium_min":8000.0,"business_min":13000.0,"first_min":16000.0,"distance_km":500},{"from":"GAU","to":"CCU","scope":"domestic","economy_min":5000,"premium_min":8000.0,"business_min":13000.0,"first_min":16000.0,"distance_km":500},{"from":"CCU","to":"IXA","scope":"domestic","economy_min":4500,"premium_min":7500.0,"business_min":13000.0,"first_min":16000.0,"distance_km":318},{"from":"IXA","to":"CCU","scope":"domestic","economy_min":4500,"premium_min":7500.0,"business_min":13000.0,"first_min":16000.0,"distance_km":318},{"from":"CCU","to":"IXB","scope":"domestic","economy_min":3500,"premium_min":"","business_min":"","first_min":"","distance_km":449},{"from":"IXB","to":"CCU","scope":"domestic","economy_min":3500,"premium_min":"","business_min":"","first_min":"","distance_km":449},{"from":"CCU","to":"IXZ","scope":"domestic","economy_min":7000,"premium_min":15500.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1306},{"from":"IXZ","to":"CCU","scope":"domestic","economy_min":7000,"premium_min":15500.0,"business_min":24000.0,"first_min":30000.0,"distance_km":1306},{"from":"CCU","to":"MAA","scope":"domestic","economy_min":6500,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":1383},{"from":"MAA","to":"CCU","scope":"domestic","economy_min":6500,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":1383},{"from":"CDG","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6563},{"from":"DEL","to":"CDG","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6563},{"from":"CJB","to":"DEL","scope":"domestic","economy_min":7500,"premium_min":14000.0,"business_min":25000.0,"first_min":40000.0,"distance_km":1949},{"from":"DEL","to":"CJB","scope":"domestic","economy_min":7500,"premium_min":14000.0,"business_min":25000.0,"first_min":40000.0,"distance_km":1949},{"from":"CMB","to":"DEL","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":2395},{"from":"DEL","to":"CMB","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":2395},{"from":"CNN","to":"DOH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2923},{"from":"DOH","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2923},{"from":"CNN","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2587},{"from":"DXB","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2587},{"from":"CNN","to":"JED","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4011},{"from":"JED","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":4011},{"from":"CNN","to":"KWI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3441},{"from":"KWI","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3441},{"from":"CNN","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2238},{"from":"MCT","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2238},{"from":"CNN","to":"RKT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2559},{"from":"RKT","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2559},{"from":"CNN","to":"RUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3359},{"from":"RUH","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3359},{"from":"CNN","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2579},{"from":"SHJ","to":"CNN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2579},{"from":"CNN","to":"TRV","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":411},{"from":"TRV","to":"CNN","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":411},{"from":"COK","to":"DEL","scope":"domestic","economy_min":8500,"premium_min":15000.0,"business_min":26000.0,"first_min":40000.0,"distance_km":2047},{"from":"DEL","to":"COK","scope":"domestic","economy_min":8500,"premium_min":15000.0,"business_min":26000.0,"first_min":40000.0,"distance_km":2047},{"from":"COK","to":"DOH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3111},{"from":"DOH","to":"COK","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3111},{"from":"COK","to":"DXB","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2782},{"from":"DXB","to":"COK","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2782},{"from":"COK","to":"KWI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3636},{"from":"KWI","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3636},{"from":"COK","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2433},{"from":"MCT","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2433},{"from":"COK","to":"PNQ","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":974},{"from":"PNQ","to":"COK","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":974},{"from":"COK","to":"RUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3539},{"from":"RUH","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3539},{"from":"COK","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2774},{"from":"SHJ","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2774},{"from":"COK","to":"SLL","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2527},{"from":"SLL","to":"COK","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2527},{"from":"CPH","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5839},{"from":"DEL","to":"CPH","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5839},{"from":"DAC","to":"DEL","scope":"international","economy_min":10000,"premium_min":"","business_min":"","first_min":"","distance_km":1427},{"from":"DEL","to":"DAC","scope":"international","economy_min":10000,"premium_min":"","business_min":"","first_min":"","distance_km":1427},{"from":"DED","to":"DEL","scope":"domestic","economy_min":3500,"premium_min":9000.0,"business_min":12000.0,"first_min":15000.0,"distance_km":216},{"from":"DEL","to":"DED","scope":"domestic","economy_min":3500,"premium_min":9000.0,"business_min":12000.0,"first_min":15000.0,"distance_km":216},{"from":"DEL","to":"DIB","scope":"domestic","economy_min":8000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1763},{"from":"DIB","to":"DEL","scope":"domestic","economy_min":8000,"premium_min":12500.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1763},{"from":"DEL","to":"DMM","scope":"international","economy_min":12000,"premium_min":24000.0,"business_min":30000.0,"first_min":38000.0,"distance_km":2695},{"from":"DMM","to":"DEL","scope":"international","economy_min":12000,"premium_min":24000.0,"business_min":30000.0,"first_min":38000.0,"distance_km":2695},{"from":"DEL","to":"DOH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2552},{"from":"DOH","to":"DEL","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2552},{"from":"DEL","to":"DPS","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":5823},{"from":"DPS","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":5823},{"from":"DEL","to":"DXB","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2183},{"from":"DXB","to":"DEL","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2183},{"from":"DEL","to":"EWR","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11765},{"from":"EWR","to":"DEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11765},{"from":"DEL","to":"FCO","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5933},{"from":"FCO","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5933},{"from":"DEL","to":"FRA","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6124},{"from":"FRA","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6124},{"from":"DEL","to":"GAU","scope":"domestic","economy_min":6000,"premium_min":13000.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1457},{"from":"GAU","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":13000.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1457},{"from":"DEL","to":"GOI","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1503},{"from":"GOI","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1503},{"from":"DEL","to":"GOX","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1464},{"from":"GOX","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":25000.0,"first_min":35000.0,"distance_km":1464},{"from":"DEL","to":"HAN","scope":"international","economy_min":30000,"premium_min":"","business_min":"","first_min":"","distance_km":3001},{"from":"HAN","to":"DEL","scope":"international","economy_min":30000,"premium_min":"","business_min":"","first_min":"","distance_km":3001},{"from":"DEL","to":"HKG","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":3748},{"from":"HKG","to":"DEL","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":3748},{"from":"DEL","to":"HKT","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3179},{"from":"HKT","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3179},{"from":"DEL","to":"HND","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":5862},{"from":"HND","to":"DEL","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":5862},{"from":"DEL","to":"HSR","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":916},{"from":"HSR","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":12000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":916},{"from":"DEL","to":"HWR","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":282},{"from":"HWR","to":"DEL","scope":"domestic","economy_min":3000,"premium_min":"","business_min":"","first_min":"","distance_km":282},{"from":"DEL","to":"HYD","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":1267},{"from":"HYD","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":1267},{"from":"DEL","to":"ICN","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":4654},{"from":"ICN","to":"DEL","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":4654},{"from":"DEL","to":"IDR","scope":"domestic","economy_min":4000,"premium_min":9000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":660},{"from":"IDR","to":"DEL","scope":"domestic","economy_min":4000,"premium_min":9000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":660},{"from":"DEL","to":"IMF","scope":"domestic","economy_min":10000,"premium_min":17500.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1721},{"from":"IMF","to":"DEL","scope":"domestic","economy_min":10000,"premium_min":17500.0,"business_min":28000.0,"first_min":35000.0,"distance_km":1721},{"from":"DEL","to":"IXB","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":17000.0,"first_min":30000.0,"distance_km":1127},{"from":"IXB","to":"DEL","scope":"domestic","economy_min":5500,"premium_min":13000.0,"business_min":17000.0,"first_min":30000.0,"distance_km":1127},{"from":"DEL","to":"IXC","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":237},{"from":"IXC","to":"DEL","scope":"domestic","economy_min":3000,"premium_min":10000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":237},{"from":"DEL","to":"IXE","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1749},{"from":"IXE","to":"DEL","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1749},{"from":"DEL","to":"IXJ","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":507},{"from":"IXJ","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":13000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":507},{"from":"DEL","to":"IXL","scope":"domestic","economy_min":7500,"premium_min":16000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":622},{"from":"IXL","to":"DEL","scope":"domestic","economy_min":7500,"premium_min":16000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":622},{"from":"DEL","to":"IXR","scope":"domestic","economy_min":6500,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1009},{"from":"IXR","to":"DEL","scope":"domestic","economy_min":6500,"premium_min":12000.0,"business_min":20000.0,"first_min":25000.0,"distance_km":1009},{"from":"DEL","to":"IXU","scope":"domestic","economy_min":4500,"premium_min":10000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":981},{"from":"IXU","to":"DEL","scope":"domestic","economy_min":4500,"premium_min":10000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":981},{"from":"DEL","to":"IXZ","scope":"domestic","economy_min":10000,"premium_min":23000.0,"business_min":30000.0,"first_min":45000.0,"distance_km":2485},{"from":"IXZ","to":"DEL","scope":"domestic","economy_min":10000,"premium_min":23000.0,"business_min":30000.0,"first_min":45000.0,"distance_km":2485},{"from":"DEL","to":"JAI","scope":"domestic","economy_min":2500,"premium_min":7000.0,"business_min":12000.0,"first_min":15000.0,"distance_km":230},{"from":"JAI","to":"DEL","scope":"domestic","economy_min":2500,"premium_min":7000.0,"business_min":12000.0,"first_min":15000.0,"distance_km":230},{"from":"DEL","to":"JDH","scope":"domestic","economy_min":4500,"premium_min":12000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":473},{"from":"JDH","to":"DEL","scope":"domestic","economy_min":4500,"premium_min":12000.0,"business_min":14000.0,"first_min":25000.0,"distance_km":473},{"from":"DEL","to":"JED","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3877},{"from":"JED","to":"DEL","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3877},{"from":"DEL","to":"JFK","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11755},{"from":"JFK","to":"DEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11755},{"from":"DEL","to":"KTM","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":817},{"from":"KTM","to":"DEL","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":817},{"from":"DEL","to":"KUL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3877},{"from":"KUL","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3877},{"from":"DEL","to":"LHR","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6731},{"from":"LHR","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6731},{"from":"DEL","to":"LKO","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":424},{"from":"LKO","to":"DEL","scope":"domestic","economy_min":3500,"premium_min":10000.0,"business_min":12000.0,"first_min":20000.0,"distance_km":424},{"from":"DEL","to":"MAA","scope":"domestic","economy_min":6000,"premium_min":15000.0,"business_min":24000.0,"first_min":35000.0,"distance_km":1760},{"from":"MAA","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":15000.0,"business_min":24000.0,"first_min":35000.0,"distance_km":1760},{"from":"DEL","to":"MCT","scope":"international","economy_min":12000,"premium_min":22000.0,"business_min":31000.0,"first_min":38000.0,"distance_km":1954},{"from":"MCT","to":"DEL","scope":"international","economy_min":12000,"premium_min":22000.0,"business_min":31000.0,"first_min":38000.0,"distance_km":1954},{"from":"DEL","to":"MEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":240000.0,"distance_km":10191},{"from":"MEL","to":"DEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":240000.0,"distance_km":10191},{"from":"DEL","to":"MLE","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":2735},{"from":"MLE","to":"DEL","scope":"international","economy_min":10000,"premium_min":30000.0,"business_min":40000.0,"first_min":80000.0,"distance_km":2735},{"from":"DEL","to":"MNL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4774},{"from":"MNL","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4774},{"from":"DEL","to":"MXP","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6157},{"from":"MXP","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6157},{"from":"DEL","to":"NAG","scope":"domestic","economy_min":5000,"premium_min":11000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":853},{"from":"NAG","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":11000.0,"business_min":20000.0,"first_min":30000.0,"distance_km":853},{"from":"DEL","to":"NMI","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":1139},{"from":"NMI","to":"DEL","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":1139},{"from":"DEL","to":"ORD","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12022},{"from":"ORD","to":"DEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12022},{"from":"DEL","to":"PAT","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":858},{"from":"PAT","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":17000.0,"first_min":25000.0,"distance_km":858},{"from":"DEL","to":"PNQ","scope":"domestic","economy_min":6000,"premium_min":14000.0,"business_min":23000.0,"first_min":30000.0,"distance_km":1155},{"from":"PNQ","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":14000.0,"business_min":23000.0,"first_min":30000.0,"distance_km":1155},{"from":"DEL","to":"PVG","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":4294},{"from":"PVG","to":"DEL","scope":"international","economy_min":30000,"premium_min":75000.0,"business_min":90000.0,"first_min":170000.0,"distance_km":4294},{"from":"DEL","to":"RGN","scope":"international","economy_min":24000,"premium_min":30000.0,"business_min":33000.0,"first_min":50000.0,"distance_km":2338},{"from":"RGN","to":"DEL","scope":"international","economy_min":24000,"premium_min":30000.0,"business_min":33000.0,"first_min":50000.0,"distance_km":2338},{"from":"DEL","to":"RPR","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":945},{"from":"RPR","to":"DEL","scope":"domestic","economy_min":5000,"premium_min":14000.0,"business_min":16000.0,"first_min":25000.0,"distance_km":945},{"from":"DEL","to":"RUH","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3035},{"from":"RUH","to":"DEL","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3035},{"from":"DEL","to":"SFO","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12382},{"from":"SFO","to":"DEL","scope":"international","economy_min":40000,"premium_min":100000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":12382},{"from":"DEL","to":"SGN","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3653},{"from":"SGN","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":3653},{"from":"DEL","to":"SHJ","scope":"international","economy_min":12000,"premium_min":25000.0,"business_min":35000.0,"first_min":45000.0,"distance_km":2165},{"from":"SHJ","to":"DEL","scope":"international","economy_min":12000,"premium_min":25000.0,"business_min":35000.0,"first_min":45000.0,"distance_km":2165},{"from":"DEL","to":"SIN","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4159},{"from":"SIN","to":"DEL","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":4159},{"from":"DEL","to":"STV","scope":"domestic","economy_min":6500,"premium_min":"","business_min":"","first_min":"","distance_km":936},{"from":"STV","to":"DEL","scope":"domestic","economy_min":6500,"premium_min":"","business_min":"","first_min":"","distance_km":936},{"from":"DEL","to":"SXR","scope":"domestic","economy_min":7000,"premium_min":13000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":645},{"from":"SXR","to":"DEL","scope":"domestic","economy_min":7000,"premium_min":13000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":645},{"from":"DEL","to":"SYD","scope":"international","economy_min":40000,"premium_min":"","business_min":"","first_min":"","distance_km":10437},{"from":"SYD","to":"DEL","scope":"international","economy_min":40000,"premium_min":"","business_min":"","first_min":"","distance_km":10437},{"from":"DEL","to":"TIR","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1679},{"from":"TIR","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":"","business_min":"","first_min":"","distance_km":1679},{"from":"DEL","to":"TLV","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":4045},{"from":"TLV","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":4045},{"from":"DEL","to":"TRV","scope":"domestic","economy_min":7000,"premium_min":16000.0,"business_min":32000.0,"first_min":45000.0,"distance_km":2232},{"from":"TRV","to":"DEL","scope":"domestic","economy_min":7000,"premium_min":16000.0,"business_min":32000.0,"first_min":45000.0,"distance_km":2232},{"from":"DEL","to":"UDR","scope":"domestic","economy_min":4500,"premium_min":"","business_min":"","first_min":"","distance_km":541},{"from":"UDR","to":"DEL","scope":"domestic","economy_min":4500,"premium_min":"","business_min":"","first_min":"","distance_km":541},{"from":"DEL","to":"VGA","scope":"domestic","economy_min":6000,"premium_min":12000.0,"business_min":23000.0,"first_min":40000.0,"distance_km":1391},{"from":"VGA","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":12000.0,"business_min":23000.0,"first_min":40000.0,"distance_km":1391},{"from":"DEL","to":"VIE","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5544},{"from":"VIE","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":5544},{"from":"DEL","to":"VNS","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":668},{"from":"VNS","to":"DEL","scope":"domestic","economy_min":4000,"premium_min":12000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":668},{"from":"DEL","to":"VTZ","scope":"domestic","economy_min":6000,"premium_min":14000.0,"business_min":23000.0,"first_min":40000.0,"distance_km":1357},{"from":"VTZ","to":"DEL","scope":"domestic","economy_min":6000,"premium_min":14000.0,"business_min":23000.0,"first_min":40000.0,"distance_km":1357},{"from":"DEL","to":"YVR","scope":"international","economy_min":50000,"premium_min":110000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11139},{"from":"YVR","to":"DEL","scope":"international","economy_min":50000,"premium_min":110000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11139},{"from":"DEL","to":"YYZ","scope":"international","economy_min":50000,"premium_min":110000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11639},{"from":"YYZ","to":"DEL","scope":"international","economy_min":50000,"premium_min":110000.0,"business_min":130000.0,"first_min":270000.0,"distance_km":11639},{"from":"DEL","to":"ZRH","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6147},{"from":"ZRH","to":"DEL","scope":"international","economy_min":35000,"premium_min":85000.0,"business_min":100000.0,"first_min":200000.0,"distance_km":6147},{"from":"DIB","to":"GAU","scope":"domestic","economy_min":2000,"premium_min":8000.0,"business_min":15000.0,"first_min":18000.0,"distance_km":374},{"from":"GAU","to":"DIB","scope":"domestic","economy_min":2000,"premium_min":8000.0,"business_min":15000.0,"first_min":18000.0,"distance_km":374},{"from":"DIB","to":"IXB","scope":"domestic","economy_min":4000,"premium_min":8000.0,"business_min":9000.0,"first_min":15000.0,"distance_km":668},{"from":"IXB","to":"DIB","scope":"domestic","economy_min":4000,"premium_min":8000.0,"business_min":9000.0,"first_min":15000.0,"distance_km":668},{"from":"DMM","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3016},{"from":"IXE","to":"DMM","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3016},{"from":"DMM","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3489},{"from":"TRV","to":"DMM","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3489},{"from":"DMU","to":"GAU","scope":"domestic","economy_min":1500,"premium_min":6000.0,"business_min":15000.0,"first_min":19000.0,"distance_km":220},{"from":"GAU","to":"DMU","scope":"domestic","economy_min":1500,"premium_min":6000.0,"business_min":15000.0,"first_min":19000.0,"distance_km":220},{"from":"DOH","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2800},{"from":"IXE","to":"DOH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2800},{"from":"DOH","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3269},{"from":"TRV","to":"DOH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3269},{"from":"DXB","to":"GOI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2214},{"from":"GOI","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2214},{"from":"DXB","to":"HYD","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2548},{"from":"HYD","to":"DXB","scope":"international","economy_min":12000,"premium_min":40000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2548},{"from":"DXB","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2461},{"from":"IXE","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2461},{"from":"DXB","to":"JAI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2049},{"from":"JAI","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2049},{"from":"DXB","to":"LKO","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2552},{"from":"LKO","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2552},{"from":"DXB","to":"STV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":1834},{"from":"STV","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":1834},{"from":"DXB","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2948},{"from":"TRV","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2948},{"from":"DXB","to":"TRZ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2940},{"from":"TRZ","to":"DXB","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2940},{"from":"GAU","to":"IMF","scope":"domestic","economy_min":4000,"premium_min":7000.0,"business_min":14000.0,"first_min":17000.0,"distance_km":276},{"from":"IMF","to":"GAU","scope":"domestic","economy_min":4000,"premium_min":7000.0,"business_min":14000.0,"first_min":17000.0,"distance_km":276},{"from":"GAU","to":"JAI","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1571},{"from":"JAI","to":"GAU","scope":"domestic","economy_min":8000,"premium_min":"","business_min":"","first_min":"","distance_km":1571},{"from":"GAU","to":"MAA","scope":"domestic","economy_min":9000,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":1883},{"from":"MAA","to":"GAU","scope":"domestic","economy_min":9000,"premium_min":13500.0,"business_min":19000.0,"first_min":24000.0,"distance_km":1883},{"from":"GOX","to":"HYD","scope":"domestic","economy_min":2500,"premium_min":9000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":515},{"from":"HYD","to":"GOX","scope":"domestic","economy_min":2500,"premium_min":9000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":515},{"from":"HKT","to":"HYD","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2380},{"from":"HYD","to":"HKT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2380},{"from":"HYD","to":"IXB","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1464},{"from":"IXB","to":"HYD","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1464},{"from":"HYD","to":"JAI","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1101},{"from":"JAI","to":"HYD","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1101},{"from":"HYD","to":"JED","scope":"international","economy_min":12000,"premium_min":34000.0,"business_min":42000.0,"first_min":52000.0,"distance_km":4136},{"from":"JED","to":"HYD","scope":"international","economy_min":12000,"premium_min":34000.0,"business_min":42000.0,"first_min":52000.0,"distance_km":4136},{"from":"HYD","to":"PNQ","scope":"domestic","economy_min":4500,"premium_min":7000.0,"business_min":16000.0,"first_min":16000.0,"distance_km":501},{"from":"PNQ","to":"HYD","scope":"domestic","economy_min":4500,"premium_min":7000.0,"business_min":16000.0,"first_min":16000.0,"distance_km":501},{"from":"HYD","to":"TIR","scope":"domestic","economy_min":2500,"premium_min":9000.0,"business_min":11000.0,"first_min":25000.0,"distance_km":417},{"from":"TIR","to":"HYD","scope":"domestic","economy_min":2500,"premium_min":9000.0,"business_min":11000.0,"first_min":25000.0,"distance_km":417},{"from":"HYD","to":"VGA","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":263},{"from":"VGA","to":"HYD","scope":"domestic","economy_min":2500,"premium_min":"","business_min":"","first_min":"","distance_km":263},{"from":"HYD","to":"VTZ","scope":"domestic","economy_min":4500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":512},{"from":"VTZ","to":"HYD","scope":"domestic","economy_min":4500,"premium_min":8500.0,"business_min":20000.0,"first_min":24000.0,"distance_km":512},{"from":"IDR","to":"PNQ","scope":"domestic","economy_min":6500,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":501},{"from":"PNQ","to":"IDR","scope":"domestic","economy_min":6500,"premium_min":7500.0,"business_min":16000.0,"first_min":20000.0,"distance_km":501},{"from":"IDR","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2079},{"from":"SHJ","to":"IDR","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2079},{"from":"IMF","to":"IXB","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":597},{"from":"IXB","to":"IMF","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":597},{"from":"IXA","to":"IXB","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":427},{"from":"IXB","to":"IXA","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":427},{"from":"IXC","to":"IXL","scope":"domestic","economy_min":6500,"premium_min":16000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":391},{"from":"IXL","to":"IXC","scope":"domestic","economy_min":6500,"premium_min":16000.0,"business_min":19000.0,"first_min":35000.0,"distance_km":391},{"from":"IXE","to":"JED","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3904},{"from":"JED","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3904},{"from":"IXE","to":"KWI","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3314},{"from":"KWI","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3314},{"from":"IXE","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2111},{"from":"MCT","to":"IXE","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2111},{"from":"IXE","to":"TRV","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":545},{"from":"TRV","to":"IXE","scope":"domestic","economy_min":5000,"premium_min":"","business_min":"","first_min":"","distance_km":545},{"from":"IXJ","to":"IXL","scope":"domestic","economy_min":4000,"premium_min":13000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":298},{"from":"IXL","to":"IXJ","scope":"domestic","economy_min":4000,"premium_min":13000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":298},{"from":"IXJ","to":"SXR","scope":"domestic","economy_min":2000,"premium_min":8500.0,"business_min":15000.0,"first_min":18000.0,"distance_km":146},{"from":"SXR","to":"IXJ","scope":"domestic","economy_min":2000,"premium_min":8500.0,"business_min":15000.0,"first_min":18000.0,"distance_km":146},{"from":"IXL","to":"SXR","scope":"domestic","economy_min":3500,"premium_min":11000.0,"business_min":13000.0,"first_min":15000.0,"distance_km":257},{"from":"SXR","to":"IXL","scope":"domestic","economy_min":3500,"premium_min":11000.0,"business_min":13000.0,"first_min":15000.0,"distance_km":257},{"from":"IXM","to":"MAA","scope":"domestic","economy_min":4000,"premium_min":11000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":419},{"from":"MAA","to":"IXM","scope":"domestic","economy_min":4000,"premium_min":11000.0,"business_min":14000.0,"first_min":20000.0,"distance_km":419},{"from":"IXZ","to":"VTZ","scope":"domestic","economy_min":5500,"premium_min":16000.0,"business_min":23000.0,"first_min":35000.0,"distance_km":1225},{"from":"VTZ","to":"IXZ","scope":"domestic","economy_min":5500,"premium_min":16000.0,"business_min":23000.0,"first_min":35000.0,"distance_km":1225},{"from":"JAI","to":"PNQ","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":937},{"from":"PNQ","to":"JAI","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":937},{"from":"LKO","to":"PNQ","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1156},{"from":"PNQ","to":"LKO","scope":"domestic","economy_min":7000,"premium_min":"","business_min":"","first_min":"","distance_km":1156},{"from":"LKO","to":"RKT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2488},{"from":"RKT","to":"LKO","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2488},{"from":"LKO","to":"RUH","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3415},{"from":"RUH","to":"LKO","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":3415},{"from":"MAA","to":"PNQ","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":914},{"from":"PNQ","to":"MAA","scope":"domestic","economy_min":5500,"premium_min":"","business_min":"","first_min":"","distance_km":914},{"from":"MAA","to":"SIN","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2923},{"from":"SIN","to":"MAA","scope":"international","economy_min":12000,"premium_min":45000.0,"business_min":50000.0,"first_min":90000.0,"distance_km":2923},{"from":"MCT","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2599},{"from":"TRV","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2599},{"from":"MCT","to":"TRZ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2591},{"from":"TRZ","to":"MCT","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2591},{"from":"SHJ","to":"TRV","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2940},{"from":"TRV","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2940},{"from":"SHJ","to":"TRZ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2931},{"from":"TRZ","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2931},{"from":"SHJ","to":"VGA","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2796},{"from":"VGA","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2796},{"from":"SHJ","to":"VNS","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2742},{"from":"VNS","to":"SHJ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2742},{"from":"SIN","to":"TRZ","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2981},{"from":"TRZ","to":"SIN","scope":"international","economy_min":12000,"premium_min":"","business_min":"","first_min":"","distance_km":2981},{"from":"VGA","to":"VTZ","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":291},{"from":"VTZ","to":"VGA","scope":"domestic","economy_min":2000,"premium_min":"","business_min":"","first_min":"","distance_km":291}];
+</script>
+
+<!-- ═══════════════════════════════════════════════ APP ══ -->
+<script>
+// ── Comprehensive airport database ──────────────────────
+const AP = {
+  // India
+  AMD:{c:"Ahmedabad",co:"India"},ATQ:{c:"Amritsar",co:"India"},AYJ:{c:"Ayodhya",co:"India"},
+  BBI:{c:"Bhubaneswar",co:"India"},BDQ:{c:"Vadodara",co:"India"},BHJ:{c:"Bhuj",co:"India"},
+  BHO:{c:"Bhopal",co:"India"},BLR:{c:"Bengaluru",co:"India"},BOM:{c:"Mumbai",co:"India"},
+  CCJ:{c:"Kozhikode",co:"India"},CCU:{c:"Kolkata",co:"India"},CJB:{c:"Coimbatore",co:"India"},
+  CNN:{c:"Kannur",co:"India"},COK:{c:"Kochi",co:"India"},DED:{c:"Dehradun",co:"India"},
+  DEL:{c:"New Delhi",co:"India"},DIB:{c:"Dibrugarh",co:"India"},DMU:{c:"Dimapur",co:"India"},
+  GAU:{c:"Guwahati",co:"India"},GOI:{c:"Goa (Dabolim)",co:"India"},GOX:{c:"Goa (Mopa)",co:"India"},
+  GWL:{c:"Gwalior",co:"India"},HSR:{c:"Hissar",co:"India"},HWR:{c:"Haldwani",co:"India"},
+  HYD:{c:"Hyderabad",co:"India"},IDR:{c:"Indore",co:"India"},IMF:{c:"Imphal",co:"India"},
+  IXA:{c:"Agartala",co:"India"},IXB:{c:"Bagdogra",co:"India"},IXC:{c:"Chandigarh",co:"India"},
+  IXE:{c:"Mangaluru",co:"India"},IXJ:{c:"Jammu",co:"India"},IXL:{c:"Leh",co:"India"},
+  IXM:{c:"Madurai",co:"India"},IXR:{c:"Ranchi",co:"India"},IXU:{c:"Aurangabad",co:"India"},
+  IXZ:{c:"Port Blair",co:"India"},JAI:{c:"Jaipur",co:"India"},JDH:{c:"Jodhpur",co:"India"},
+  JGA:{c:"Jamnagar",co:"India"},LKO:{c:"Lucknow",co:"India"},MAA:{c:"Chennai",co:"India"},
+  NAG:{c:"Nagpur",co:"India"},NMI:{c:"Navi Mumbai",co:"India"},PAT:{c:"Patna",co:"India"},
+  PNQ:{c:"Pune",co:"India"},RPR:{c:"Raipur",co:"India"},STV:{c:"Surat",co:"India"},
+  SXR:{c:"Srinagar",co:"India"},TIR:{c:"Tirupati",co:"India"},TRV:{c:"Thiruvananthapuram",co:"India"},
+  TRZ:{c:"Tiruchirappalli",co:"India"},UDR:{c:"Udaipur",co:"India"},VGA:{c:"Vijayawada",co:"India"},
+  VNS:{c:"Varanasi",co:"India"},VTZ:{c:"Visakhapatnam",co:"India"},
+  // UAE
+  AUH:{c:"Abu Dhabi",co:"UAE"},DXB:{c:"Dubai",co:"UAE"},SHJ:{c:"Sharjah",co:"UAE"},
+  RKT:{c:"Ras Al Khaimah",co:"UAE"},
+  // UK
+  LHR:{c:"London Heathrow",co:"UK"},LGW:{c:"London Gatwick",co:"UK"},
+  BHX:{c:"Birmingham",co:"UK"},
+  // US
+  JFK:{c:"New York (JFK)",co:"USA"},EWR:{c:"New York (EWR)",co:"USA"},
+  SFO:{c:"San Francisco",co:"USA"},ORD:{c:"Chicago",co:"USA"},
+  // Europe
+  FRA:{c:"Frankfurt",co:"Germany"},AMS:{c:"Amsterdam",co:"Netherlands"},
+  CDG:{c:"Paris",co:"France"},FCO:{c:"Rome",co:"Italy"},
+  MXP:{c:"Milan",co:"Italy"},VIE:{c:"Vienna",co:"Austria"},
+  CPH:{c:"Copenhagen",co:"Denmark"},ZRH:{c:"Zurich",co:"Switzerland"},
+  TLV:{c:"Tel Aviv",co:"Israel"},
+  // South/Southeast Asia
+  BKK:{c:"Bangkok",co:"Thailand"},HKT:{c:"Phuket",co:"Thailand"},
+  SIN:{c:"Singapore",co:"Singapore"},KUL:{c:"Kuala Lumpur",co:"Malaysia"},
+  HAN:{c:"Hanoi",co:"Vietnam"},SGN:{c:"Ho Chi Minh City",co:"Vietnam"},
+  MNL:{c:"Manila",co:"Philippines"},DPS:{c:"Bali",co:"Indonesia"},
+  // East Asia
+  HKG:{c:"Hong Kong",co:"Hong Kong"},HND:{c:"Tokyo",co:"Japan"},
+  ICN:{c:"Seoul",co:"South Korea"},PVG:{c:"Shanghai",co:"China"},
+  // Middle East
+  DOH:{c:"Doha",co:"Qatar"},BAH:{c:"Bahrain",co:"Bahrain"},
+  DMM:{c:"Dammam",co:"Saudi Arabia"},JED:{c:"Jeddah",co:"Saudi Arabia"},
+  RUH:{c:"Riyadh",co:"Saudi Arabia"},KWI:{c:"Kuwait City",co:"Kuwait"},
+  MCT:{c:"Muscat",co:"Oman"},SLL:{c:"Salalah",co:"Oman"},AAN:{c:"Al Ain",co:"UAE"},
+  // South Asia
+  CMB:{c:"Colombo",co:"Sri Lanka"},KTM:{c:"Kathmandu",co:"Nepal"},
+  DAC:{c:"Dhaka",co:"Bangladesh"},MLE:{c:"Malé",co:"Maldives"},
+  RGN:{c:"Yangon",co:"Myanmar"},
+  // Africa/Indian Ocean
+  MRU:{c:"Mauritius",co:"Mauritius"},
+  // Oceania
+  MEL:{c:"Melbourne",co:"Australia"},SYD:{c:"Sydney",co:"Australia"},
+  // Canada
+  YVR:{c:"Vancouver",co:"Canada"},YYZ:{c:"Toronto",co:"Canada"},
+};
+
+function city(code) { return AP[code]?.c || code; }
+function country(code) { return AP[code]?.co || 'Other'; }
+
+// Enrich routes
+const ROUTES = window.ROUTES.map(r => ({
+  ...r,
+  from_city: city(r.from),
+  to_city: city(r.to),
+  to_country: country(r.to),
+  from_country: country(r.from),
+  eco:  +r.economy_min  || 0,
+  prem: +r.premium_min  || 0,
+  biz:  +r.business_min || 0,
+  first:+r.first_min    || 0,
+  dist: +r.distance_km  || 0,
+}));
+
+// Identify Indian airports
+const INDIA_CODES = new Set(ROUTES.filter(r=>r.scope==='domestic').flatMap(r=>[r.from,r.to]));
+
+// Build country → airports map for finder
+const COUNTRY_MAP = {};
+ROUTES.forEach(r => {
+  if (!INDIA_CODES.has(r.to)) {
+    if (!COUNTRY_MAP[r.to_country]) COUNTRY_MAP[r.to_country] = new Set();
+    COUNTRY_MAP[r.to_country].add(r.to);
+  }
+});
+
+// ── Populate dropdowns ──────────────────────────────────
+const finderFrom = document.getElementById('finderFrom');
+const finderCountry = document.getElementById('finderCountry');
+
+// Indian airports sorted by city name
+[...INDIA_CODES].sort((a,b)=>city(a).localeCompare(city(b))).forEach(code => {
+  const o = document.createElement('option');
+  o.value = code; o.text = `${city(code)} (${code})`;
+  finderFrom.appendChild(o);
+});
+
+// Countries (from intl routes departing India) sorted
+Object.keys(COUNTRY_MAP).sort().forEach(co => {
+  if (co === 'India') return;
+  const o = document.createElement('option');
+  o.value = co; o.text = co;
+  finderCountry.appendChild(o);
+});
+
+// ── State ───────────────────────────────────────────────
+let currentView = 'cards';
+let tableSortCol = null, tableSortDir = 1;
+const colFilters = {}; // col → value
+
+// ── India Finder ────────────────────────────────────────
+function runFinder() {
+  const fromCode = finderFrom.value;
+  const destCountry = finderCountry.value;
+  const el = document.getElementById('finderResults');
+
+  // Find routes: from Indian airport → destination matching country
+  let results = ROUTES.filter(r => {
+    if (r.scope !== 'international') return false;
+    if (!INDIA_CODES.has(r.from)) return false;
+    if (fromCode && r.from !== fromCode) return false;
+    if (destCountry && r.to_country !== destCountry) return false;
+    return true;
+  });
+
+  // Sort by economy
+  results.sort((a,b) => (a.eco||999999)-(b.eco||999999));
+
+  // Dedupe: best (lowest economy) per to-airport
+  const seen = new Set();
+  results = results.filter(r => {
+    const key = r.from+'|'+r.to;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  if (!results.length) {
+    el.innerHTML = `<p class="finder-msg">No matching routes found. Try changing origin or destination.</p>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <p class="finder-msg">${results.length} route${results.length!==1?'s':''} found — click any to see full details in the table</p>
+    <div class="finder-results-grid">
+      ${results.slice(0,12).map(r=>`
+        <div class="finder-card" onclick="jumpToRoute('${r.from}','${r.to}')">
+          <div class="finder-card-route">${r.from} → ${r.to}</div>
+          <div class="finder-card-meta">${r.from_city} → ${r.to_city}, ${r.to_country}</div>
+          <div class="finder-card-pts">
+            Eco: ${r.eco ? r.eco.toLocaleString() : '—'} pts
+            ${r.biz ? ` · Biz: ${r.biz.toLocaleString()}` : ''}
+          </div>
+          <div class="finder-card-meta">${r.dist ? r.dist.toLocaleString()+' km' : ''}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function jumpToRoute(from, to) {
+  // Switch to table, filter by these airports
+  switchView('table');
+  document.getElementById('search').value = from + ' ' + to;
+  apply();
+  // Scroll to table
+  document.getElementById('tableView').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ── Main apply / render ─────────────────────────────────
+function apply() {
+  let r = [...ROUTES];
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const sc = document.getElementById('scope').value;
+  const sort = document.getElementById('sortSel').value;
+
+  // Global search
+  if (q) {
+    const terms = q.split(/\s+/);
+    r = r.filter(x => terms.every(t =>
+      x.from.toLowerCase().includes(t) ||
+      x.to.toLowerCase().includes(t) ||
+      x.from_city.toLowerCase().includes(t) ||
+      x.to_city.toLowerCase().includes(t) ||
+      x.to_country.toLowerCase().includes(t) ||
+      x.scope.includes(t)
+    ));
+  }
+  if (sc) r = r.filter(x => x.scope === sc);
+
+  // Global sort
+  if (sort === 'eco_asc')  r.sort((a,b) => (a.eco||999999)-(b.eco||999999));
+  if (sort === 'eco_desc') r.sort((a,b) => (b.eco||0)-(a.eco||0));
+  if (sort === 'biz_asc')  r.sort((a,b) => (a.biz||999999)-(b.biz||999999));
+  if (sort === 'dist_desc')r.sort((a,b) => b.dist-a.dist);
+  if (sort === 'dist_asc') r.sort((a,b) => a.dist-b.dist);
+
+  // Table column sort overrides if in table view
+  if (currentView === 'table' && tableSortCol) {
+    r = sortByCol(r, tableSortCol, tableSortDir);
+  }
+
+  renderStats(r);
+  if (currentView === 'cards') renderCards(r);
+  else renderTable(r);
+
+  const label = document.getElementById('resultsLabel');
+  label.textContent = `${r.length} of ${ROUTES.length} routes`;
+}
+
+function sortByCol(r, col, dir) {
+  return [...r].sort((a,b) => {
+    let va = a[col], vb = b[col];
+    if (col === 'eco' || col === 'biz' || col === 'prem' || col === 'first' || col === 'dist') {
+      va = va||0; vb = vb||0;
+      return (va-vb)*dir;
+    }
+    va = String(va||''); vb = String(vb||'');
+    return va.localeCompare(vb)*dir;
+  });
+}
+
+function pts(v) {
+  return v ? v.toLocaleString() : '<span class="pts-na">—</span>';
+}
+
+// ── Stats ───────────────────────────────────────────────
+function renderStats(r) {
+  const dom  = r.filter(x=>x.scope==='domestic').length;
+  const intl = r.filter(x=>x.scope==='international').length;
+  const minEco = Math.min(...r.filter(x=>x.eco>0).map(x=>x.eco));
+  const countries = new Set(r.map(x=>x.to_country)).size;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-val">${r.length}</div><div class="stat-lbl">Total Routes</div></div>
+    <div class="stat"><div class="stat-val">${dom}</div><div class="stat-lbl">Domestic</div></div>
+    <div class="stat"><div class="stat-val">${intl}</div><div class="stat-lbl">International</div></div>
+    <div class="stat"><div class="stat-val">${countries}</div><div class="stat-lbl">Countries</div></div>
+    <div class="stat"><div class="stat-val">${isFinite(minEco)?minEco.toLocaleString():'—'}</div><div class="stat-lbl">Lowest Economy (pts)</div></div>
+  `;
+}
+
+// ── Cards ────────────────────────────────────────────────
+function renderCards(r) {
+  if (!r.length) { document.getElementById('cardsView').innerHTML = emptyState(); return; }
+  document.getElementById('cardsView').innerHTML = `<div class="cards-grid">${
+    r.map(x => `
+      <div class="route-card ${x.scope==='international'?'intl':'dom'}">
+        <div class="card-header">
+          <div>
+            <div class="card-route">${x.from} → ${x.to}</div>
+            <div class="card-cities">${x.from_city} → ${x.to_city}${x.to_country!=='India'?' · '+x.to_country:''}</div>
+          </div>
+          <span class="badge ${x.scope==='international'?'badge-intl':'badge-dom'}">${x.scope==='international'?'Intl':'Domestic'}</span>
+        </div>
+        <div class="card-row"><span class="card-lbl">Economy</span><span class="card-val pts-eco">${x.eco?x.eco.toLocaleString()+' pts':'—'}</span></div>
+        ${x.prem?`<div class="card-row"><span class="card-lbl">Premium</span><span class="card-val pts-prem">${x.prem.toLocaleString()} pts</span></div>`:''}
+        ${x.biz ?`<div class="card-row"><span class="card-lbl">Business</span><span class="card-val pts-biz">${x.biz.toLocaleString()} pts</span></div>`:''}
+        ${x.first?`<div class="card-row"><span class="card-lbl">First</span><span class="card-val pts-first">${x.first.toLocaleString()} pts</span></div>`:''}
+        <div class="card-row"><span class="card-lbl">Distance</span><span class="card-val">${x.dist?x.dist.toLocaleString()+' km':'—'}</span></div>
+      </div>`).join('')
+  }</div>`;
+}
+
+// ── Table ────────────────────────────────────────────────
+const COLS = [
+  {key:'from_city', label:'From City'},
+  {key:'from',      label:'Code'},
+  {key:'to_city',   label:'To City'},
+  {key:'to',        label:'Code'},
+  {key:'to_country',label:'Country'},
+  {key:'scope',     label:'Scope'},
+  {key:'eco',       label:'Economy'},
+  {key:'prem',      label:'Premium'},
+  {key:'biz',       label:'Business'},
+  {key:'first',     label:'First'},
+  {key:'dist',      label:'Distance'},
+];
+
+function sortArrow(col) {
+  if (tableSortCol !== col) return `<span class="sort-icon">↕</span>`;
+  return tableSortDir === 1 ? `<span class="sort-icon">↑</span>` : `<span class="sort-icon">↓</span>`;
+}
+
+function renderTable(r) {
+  // Apply per-column filters on top
+  let filtered = r;
+  Object.entries(colFilters).forEach(([col, val]) => {
+    if (!val) return;
+    const v = val.toLowerCase();
+    filtered = filtered.filter(row => String(row[col]||'').toLowerCase().includes(v));
+  });
+
+  const tableView = document.getElementById('tableView');
+  const thClass = col => tableSortCol===col ? (tableSortDir===1?'sort-asc':'sort-desc') : '';
+
+  // ── One-time: build the full table shell (header + tbody) ──
+  // Only rebuild the entire structure when the table wrapper doesn't exist yet,
+  // OR when a global filter/sort changed (not a col-filter keystroke).
+  // We detect "col-filter keystroke" via the _colFilterActive flag set in setColFilter.
+  const needsFullRebuild = !tableView.querySelector('table') || !tableView._tableReady;
+
+  if (needsFullRebuild) {
+    tableView.innerHTML = `
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr id="theadSortRow">
+            ${COLS.map(c=>`
+              <th class="${thClass(c.key)}" onclick="toggleSort('${c.key}')">
+                <div class="th-inner">${c.label} ${sortArrow(c.key)}</div>
+              </th>`).join('')}
+          </tr>
+          <tr class="col-filter-row" id="theadFilterRow">
+            ${COLS.map(c=>`
+              <th>
+                <input class="col-filter" data-col="${c.key}" placeholder="Filter…"
+                  value="${colFilters[c.key]||''}">
+              </th>`).join('')}
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>`;
+
+    // Attach listeners once — oninput on the filter row (event delegation)
+    tableView.querySelector('#theadFilterRow').addEventListener('input', e => {
+      const input = e.target.closest('input[data-col]');
+      if (input) setColFilter(input.dataset.col, input.value);
+    });
+
+    tableView._tableReady = true;
+  } else {
+    // Just refresh sort-header classes & arrows without touching inputs
+    const sortRow = tableView.querySelector('#theadSortRow');
+    sortRow.querySelectorAll('th').forEach((th, i) => {
+      const col = COLS[i].key;
+      th.className = thClass(col);
+      th.querySelector('.th-inner').innerHTML = `${COLS[i].label} ${sortArrow(col)}`;
+    });
+  }
+
+  // ── Always: update only the tbody rows ──
+  const tbody = tableView.querySelector('#tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="${COLS.length}" style="text-align:center;padding:40px;color:var(--txt2)">No routes match your filters.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(x=>`<tr>
+    <td>${x.from_city}</td>
+    <td><strong>${x.from}</strong></td>
+    <td>${x.to_city}</td>
+    <td><strong>${x.to}</strong></td>
+    <td>${x.to_country}</td>
+    <td><span class="pill ${x.scope==='international'?'pill-intl':'pill-dom'}">${x.scope==='international'?'Intl':'Dom'}</span></td>
+    <td class="pts pts-eco">${pts(x.eco)}</td>
+    <td class="pts pts-prem">${pts(x.prem)}</td>
+    <td class="pts pts-biz">${pts(x.biz)}</td>
+    <td class="pts pts-first">${pts(x.first)}</td>
+    <td>${x.dist?x.dist.toLocaleString()+' km':'—'}</td>
+  </tr>`).join('');
+}
+
+function toggleSort(col) {
+  if (tableSortCol === col) tableSortDir *= -1;
+  else { tableSortCol = col; tableSortDir = 1; }
+  // Don't force full rebuild — the else-branch in renderTable will refresh sort headers in place
+  apply();
+}
+
+function setColFilter(col, val) {
+  colFilters[col] = val;
+  apply();
+}
+
+function emptyState() {
+  return `<div class="empty">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <p>No routes match your filters. Try broadening your search.</p>
+  </div>`;
+}
+
+// ── Tabs ────────────────────────────────────────────────
+function switchView(view) {
+  currentView = view;
+  document.getElementById('cardsView').style.display = view==='cards' ? 'block' : 'none';
+  document.getElementById('tableView').style.display = view==='table' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+  // Force full header rebuild when switching to table view
+  const tv = document.getElementById('tableView');
+  if (view === 'table') tv._tableReady = false;
+  apply();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchView(t.dataset.view));
+});
+
+// ── Global filters ──────────────────────────────────────
+['search','scope','sortSel'].forEach(id => {
+  document.getElementById(id).addEventListener('input', apply);
+});
+
+function clearAll() {
+  document.getElementById('search').value = '';
+  document.getElementById('scope').value = '';
+  document.getElementById('sortSel').value = '';
+  tableSortCol = null; tableSortDir = 1;
+  Object.keys(colFilters).forEach(k => delete colFilters[k]);
+  // Force full header rebuild so filter inputs show as empty
+  document.getElementById('tableView')._tableReady = false;
+  apply();
+}
+
+// ── Init ────────────────────────────────────────────────
+apply();
+</script>
+</body>
+</html>
